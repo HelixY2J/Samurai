@@ -34,32 +34,35 @@ func main() {
 		fmt.Println("CLient is connected")
 
 		// Continuously read data from the pipe and send it to the client
-		buf := make([]byte, 1024)
+		buf := make([]byte, 32768)
 
-		for {
-			// Try reading a small chunk
-			n, err := pipe.Read(buf)
-			if err != nil {
+		// Goroutine to handle reading from the pipe and sending data to the client
+		go func(conn net.Conn) {
+			defer conn.Close()
 
-				if err.Error() == "EOF" {
-					fmt.Println("EOF reached")
+			for {
+				n, err := pipe.Read(buf)
+				if err != nil {
+
+					if err.Error() == "EOF" {
+						fmt.Println("EOF reached")
+						break
+					}
+					fmt.Println("Error reading from pipe:", err)
 					break
 				}
-				fmt.Println("Error reading from pipe:", err)
-				break
-			}
 
-			fmt.Printf("Read %d bytes: %s\n", n, string(buf[:n]))
-
-			// sendinf data to client
-			_, err = conn.Write(buf[:n])
-			if err != nil {
-				fmt.Println("Error in sending data to client:", err)
-				break
+				// sendinf data to client
+				_, err = conn.Write(buf[:n])
+				fmt.Printf("Read %d bytes: %s\n", n, string(buf[:5]))
+				if err != nil {
+					fmt.Println("Error in sending data to client:", err)
+					break
+				}
 			}
-		}
-		conn.Close()
-		fmt.Println("Client is gone !")
+			conn.Close()
+			fmt.Println("Client is gone !")
+		}(conn)
 	}
 
 }
